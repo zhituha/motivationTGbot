@@ -42,7 +42,6 @@ def get_send_params(response, schedule, interval, phrase_tmpl):
     """
     # simple parsing of the response. To answer we need message and text in it
     # TG API can return edited_message, or sticker instead of text. Not interesting for us.
-    print response
 
     if u'message' not in response['result'][-1]:
         params = {'chat_id': None, 'schedule': schedule}
@@ -66,10 +65,12 @@ def get_send_params(response, schedule, interval, phrase_tmpl):
         else:
             schedule[reply_chat_id] += 1
             params = {'chat_id': None, 'schedule': schedule}
+            print schedule
             return params
     else:
         schedule[reply_chat_id] = 1
         params = {'chat_id': None, 'schedule': schedule}
+        print schedule
         return params
 
     chat_id = reply_chat_id
