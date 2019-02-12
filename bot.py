@@ -30,7 +30,7 @@ def get_updates(offset):
     return response
 
 
-def get_send_params(response, schedule, interval, phrase_tmpl):
+def get_send_params(response, schedule, interval, phrase_tmpl, stop_list):
     """
     Parsing the response. Managing the schedule.
     :param phrase_tmpl: phrase template for sending. Defined in settings.py
@@ -79,7 +79,7 @@ def get_send_params(response, schedule, interval, phrase_tmpl):
 
     text = last_message['text']
     text = text.split(' ')
-    final = do_magic(text, phrase_tmpl)
+    final = do_magic(text, phrase_tmpl, stop_list)
 
     # if we did not got prepared text for sending, we should fallback to old schedule
     # new schedule may be a problem with avoiding of a counter without a final var on this stage.
@@ -107,7 +107,7 @@ def get_new_offset(response):
         print u'Some problems with getting new offset. Is the response full?'
 
 
-def do_magic(text, phrase_tmpl):
+def do_magic(text, phrase_tmpl, stop_list):
     """
     Getting a message from user, parsing it with pymorphy2.
     :param phrase_tmpl: phrase template for sending. defined in settings.py.
@@ -126,11 +126,12 @@ def do_magic(text, phrase_tmpl):
 
         if parse.tag.POS in {u'VERB', u'INFN', u'PRTF', u'PRTS', u'GRND'}:
             word = parse.normal_form
-            vocabulary.append(unicode(word))
+            if word not in stop_list:
+                vocabulary.append(unicode(word))
     try:
         index = randrange(0, len(vocabulary), 1)
         word = vocabulary[index]
-    except:
+    except ValueError:
         return None
     end_phrase = u'{phrase}{word}!'.format(phrase=phrase_tmpl, word=word)
     return end_phrase
@@ -191,7 +192,7 @@ def main():
         offset = get_new_offset(response)
 
         # phrase and wait_posts are variables from the settings.
-        params = get_send_params(response, schedule, wait_posts, phrase)
+        params = get_send_params(response, schedule, wait_posts, phrase, bad_words)
 
         schedule = params.pop('schedule')
 

@@ -40,6 +40,8 @@ wait_posts = 35
 phrase = u'Эй, кожаный мешок, ты не способен '
 
 
-# socks.set_default_proxy(socks.PROXY_TYPE_SOCKS5, addr=proxy_server, port=proxy_port,
-#                         username=proxy_user, password=proxy_pass)
-# socket.socket = socks.socksocket
+# words we should not use. Like a stop-list.
+
+bad_words = [
+    u'быть'
+]
