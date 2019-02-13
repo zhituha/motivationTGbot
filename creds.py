@@ -2,7 +2,7 @@
 
 """
 
-Rename this file to seetings.py or fix the "import" block in the main file.
+Rename this file to settings.py or fix the "import" block in the main file.
 
 """
 
@@ -36,7 +36,7 @@ api_timeout = 30
 # how often we should post a message to the chats.
 wait_posts = 35
 
-# our pharase.
+# our phrase.
 phrase = u'Эй, кожаный мешок, ты не способен '
 
 
@@ -45,3 +45,13 @@ phrase = u'Эй, кожаный мешок, ты не способен '
 bad_words = [
     u'быть'
 ]
+
+# Presets of trigger phrases. with list of answer for it.
+presets = {
+    u'бот, извинись': [u'Ребята, простите, ради Бога!',
+                       u'Присядь на бутылку, кусок мяса!',
+                       u'СМАКМАБИЧАП!'],
+    u'бот, заебал': [u'И че ты мне сделаешь? Я в другом городе!',
+                     u'В следующий раз святой рандом будет на твоей стороне... Возможно.',
+                     u'Обязательно учту твое мнение, инкубатор для бактерий.']
+}

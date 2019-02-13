@@ -30,9 +30,11 @@ def get_updates(offset):
     return response
 
 
-def get_send_params(response, schedule, interval, phrase_tmpl, stop_list):
+def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, presets_phrases):
     """
     Parsing the response. Managing the schedule.
+    :param presets_phrases: Presets of phrases bot should catch and answer.
+    :param stop_list: Words bot should ignore. For example 'быть' - looks ugly in end phrase.
     :param phrase_tmpl: phrase template for sending. Defined in settings.py
     :param response: Response we've got from getUpdates()
     :param schedule: Json with by chat message counter.
@@ -57,8 +59,21 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list):
     # backup :)
     old_schedule = dict(schedule)
 
+    chat_id = reply_chat_id
+
+    reply_to = last_message['message_id']
+
+    text = last_message['text'].lower()
+    text = text.split(' ')
+
+    interrupt = check_for_target_phrase(text, presets_phrases)
+    if interrupt is not None:
+        params = {'chat_id': chat_id, 'text': interrupt, 'schedule': schedule, 'reply_to_message_id': reply_to}
+        return params
+
     # Should we post a message and void the counter for this chat_id
     # or we just need to increment a counter for this chat. Or add a new counter for the new chat.
+
     if reply_chat_id in schedule:
         if schedule[reply_chat_id] >= interval:
             schedule[reply_chat_id] = 1
@@ -73,12 +88,6 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list):
         print schedule
         return params
 
-    chat_id = reply_chat_id
-
-    reply_to = last_message['message_id']
-
-    text = last_message['text']
-    text = text.split(' ')
     final = do_magic(text, phrase_tmpl, stop_list)
 
     # if we did not got prepared text for sending, we should fallback to old schedule
@@ -96,7 +105,7 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list):
 
 def get_new_offset(response):
     """
-    Jus incrementing offset by 1
+    Just incrementing offset by 1
     :param response: response from getUpdates()
     :return: new offset. Actually I'm waiting for exception here :)
     """
@@ -107,9 +116,28 @@ def get_new_offset(response):
         print u'Some problems with getting new offset. Is the response full?'
 
 
+def check_for_target_phrase(text, presets_phrases):
+    """
+    Checking message from update for our trigger-phrases. You can define this phrase in
+    settings file. It should be set of 'trigger phrase': ['list of', 'answers'].
+    Answer will be select by random.
+    :param text: text(list of words, yep..) from chat.
+    :param presets_phrases: presets from settings.
+    :return: None or random phrase from presets.
+    """
+    text = ' '.join(text)
+    for target_phrase in presets_phrases:
+        if target_phrase.lower() in text:
+            phrase_index = randrange(0, len(presets_phrases[target_phrase]), 1)
+            end_phrase = presets_phrases[target_phrase][phrase_index]
+            return end_phrase
+    return None
+
+
 def do_magic(text, phrase_tmpl, stop_list):
     """
     Getting a message from user, parsing it with pymorphy2.
+    :param stop_list:
     :param phrase_tmpl: phrase template for sending. defined in settings.py.
     :param text: just message from chat.
     :return: end phrase for sending, with random verb(all forms) from text but in infinitive form.
@@ -192,7 +220,7 @@ def main():
         offset = get_new_offset(response)
 
         # phrase and wait_posts are variables from the settings.
-        params = get_send_params(response, schedule, wait_posts, phrase, bad_words)
+        params = get_send_params(response, schedule, wait_posts, phrase, bad_words, presets)
 
         schedule = params.pop('schedule')
 
