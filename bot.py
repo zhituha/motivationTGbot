@@ -45,12 +45,15 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, preset
     # simple parsing of the response. To answer we need message and text in it
     # TG API can return edited_message, or sticker instead of text. Not interesting for us.
 
-    if u'message' not in response['result'][-1]:
-        params = {'chat_id': None, 'schedule': schedule}
-        return params
-    elif u'text' not in response['result'][-1]['message']:
-        params = {'chat_id': None, 'schedule': schedule}
-        return params
+    try:
+        if u'message' not in response['result'][-1]:
+            params = {'chat_id': None, 'schedule': schedule}
+            return params
+        elif u'text' not in response['result'][-1]['message']:
+            params = {'chat_id': None, 'schedule': schedule}
+            return params
+    except KeyError:
+        return {'chat_id': None, 'schedule': schedule}
 
     # "Cutting" the result.
     last_message = response['result'][-1]['message']
@@ -206,8 +209,7 @@ def initial_run():
                 offset = response['result'][-1]['update_id'] + 1
                 return offset
         except Exception as exc:
-            print 'Cannot finish initial_run. Check it.' + str(exc)
-
+            print 'Cannot finish initial_run. Check it. {exc}'.format(exc=str(exc))
             continue
 
 
