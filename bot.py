@@ -126,9 +126,10 @@ def check_for_target_phrase(text, presets_phrases):
     :return: None or random phrase from presets.
     """
     # we shoild joing the list into the string and remove all punctuation marks.
-    text = ' '.join(text)
-    del_chars = '.,?!:;)(\\/#"\''
-    text = text.translate(None, del_chars)
+    text = u' '.join(text)
+    del_chars = u'.,?!:;)(\\«»/#"\''
+    del_map = dict((ord(char), None) for char in del_chars)
+    text = text.translate(del_map)
 
     for target_phrase in presets_phrases:
         if target_phrase.lower() in text:
@@ -153,8 +154,9 @@ def do_magic(text, phrase_tmpl, stop_list):
         if len(word) < 3:
             continue
         # ugly string...
-        del_chars = '.,?!:;)(\\/#"\''
-        word = word.translate(None, del_chars)
+        del_chars = u'.,?!:;)«»(\\/#"\''
+        del_map = dict((ord(char), None) for char in del_chars)
+        word = word.translate(del_map)
         parse = morph.parse(word)[0]
 
         if parse.tag.POS in {u'VERB', u'INFN', u'PRTF', u'PRTS', u'GRND'}:
