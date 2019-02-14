@@ -25,6 +25,8 @@ def get_updates(offset):
     try:
         response = requests.get(url, timeout=api_timeout, data=params)
         response = response.json()
+    except KeyboardInterrupt:
+        exit()
     except:
         return None
     return response
@@ -115,7 +117,7 @@ def get_new_offset(response):
     try:
         offset = response['result'][-1]['update_id'] + 1
         return offset
-    except:
+    except KeyError:
         print u'Some problems with getting new offset. Is the response full?'
 
 
@@ -185,8 +187,8 @@ def send_message(params):
     url = '{api}/{token}/sendMessage'.format(api=api, token=token)
     try:
         requests.post(url, data=params)
-    except:
-        print 'Cannot send the message. Check it. sendMessage func.'
+    except Exception as exc:
+        print 'Cannot send the message. Check it. sendMessage func.{exc}'.format(exc=exc)
 
 
 def initial_run():
@@ -211,6 +213,8 @@ def initial_run():
         except Exception as exc:
             print 'Cannot finish initial_run. Check it. {exc}'.format(exc=str(exc))
             continue
+        except KeyboardInterrupt:
+            exit()
 
 
 def main():
