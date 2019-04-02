@@ -37,7 +37,7 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, preset
     Parsing the response. Managing the schedule.
     :param presets_phrases: Presets of phrases bot should catch and answer.
     :param stop_list: Words bot should ignore. For example 'быть' - looks ugly in end phrase.
-    :param phrase_tmpl: phrase template for sending. Defined in settings.py
+    :param phrase_tmpl: phrase templates for sending. Defined in settings.py
     :param response: Response we've got from getUpdates()
     :param schedule: Json with by chat message counter.
     :param interval: frequency of the posting messages.
@@ -117,8 +117,9 @@ def get_new_offset(response):
     try:
         offset = response['result'][-1]['update_id'] + 1
         return offset
-    except KeyError:
+    except (KeyError, IndexError):
         print u'Some problems with getting new offset. Is the response full?'
+        pass
 
 
 def check_for_target_phrase(text, presets_phrases):
@@ -155,6 +156,8 @@ def do_magic(text, phrase_tmpl, stop_list):
     morph = pymorphy2.MorphAnalyzer()
     vocabulary = []
 
+    phrase = phrase_tmpl[randrange(0, len(phrase_tmpl), 1)]
+
     for word in text:
         if len(word) < 3:
             continue
@@ -173,7 +176,7 @@ def do_magic(text, phrase_tmpl, stop_list):
         word = vocabulary[index]
     except ValueError:
         return None
-    end_phrase = u'{phrase}{word}!'.format(phrase=phrase_tmpl, word=word)
+    end_phrase = phrase.format(word=word)
     return end_phrase
 
 
@@ -188,7 +191,7 @@ def send_message(params):
     try:
         requests.post(url, data=params)
     except Exception as exc:
-        print 'Cannot send the message. Check it. sendMessage func.{exc}'.format(exc=exc)
+        print 'Cannot send the message. Check it. sendMessage func.{exc}'.format(exc=str(exc))
 
 
 def initial_run():
@@ -233,7 +236,7 @@ def main():
         offset = get_new_offset(response)
 
         # phrase and wait_posts are variables from the settings.
-        params = get_send_params(response, schedule, wait_posts, phrase, bad_words, presets)
+        params = get_send_params(response, schedule, wait_posts, phrases, bad_words, presets)
 
         schedule = params.pop('schedule')
 
