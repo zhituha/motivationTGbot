@@ -131,9 +131,9 @@ def check_for_target_phrase(text, presets_phrases):
     :param presets_phrases: presets from settings.
     :return: None or random phrase from presets.
     """
-    # we shoild joing the list into the string and remove all punctuation marks.
+    # we should join the list into the string and remove all punctuation marks.
     text = u' '.join(text)
-    del_chars = u'.,?!:;)(\\«»/#"\''
+    del_chars = u'.,?!:;)(\\«»#"\''
     del_map = dict((ord(char), None) for char in del_chars)
     text = text.translate(del_map)
 
@@ -162,7 +162,7 @@ def do_magic(text, phrase_tmpl, stop_list):
         if len(word) < 3:
             continue
         # ugly string...
-        del_chars = u'.,?!:;)«»(\\/#"\''
+        del_chars = u'.,?!:;)«»(\\#"\''
         del_map = dict((ord(char), None) for char in del_chars)
         word = word.translate(del_map)
         parse = morph.parse(word)[0]
@@ -245,8 +245,8 @@ def main():
 
         send_message(params)
 
-        # if something goes wrong we should not bombing the API, so sleep one second
-        sleep(1)
+        # if something goes wrong we should not bombing the API, so sleep a bit.
+        sleep(0.2)
 
 
 if __name__ == '__main__':
