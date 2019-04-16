@@ -48,7 +48,8 @@ phrases = [
 # words we should not use. Like a stop-list.
 bad_words = [
     u'быть',
-    u'мочь'
+    u'мочь',
+    u'стать'
 ]
 
 # Presets of trigger phrases. with list of answer for it.
