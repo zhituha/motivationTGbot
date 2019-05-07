@@ -2,6 +2,7 @@
 
 import requests
 import pymorphy2
+import re
 from time import sleep
 from random import randrange
 
@@ -10,7 +11,11 @@ from settings import *
 
 
 # TODO
-# random posting interval for each chat.
+# random posting interval for each chat. look at messagerate
+# settings for chat.
+# custom phrases for chat (setting /settings )
+# logging into file
+
 
 def get_updates(offset):
     """
@@ -27,7 +32,7 @@ def get_updates(offset):
         response = response.json()
     except KeyboardInterrupt:
         exit()
-    except:
+    except Exception:
         return None
     return response
 
@@ -56,6 +61,8 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, preset
             return params
     except KeyError:
         return {'chat_id': None, 'schedule': schedule}
+    except KeyboardInterrupt:
+        exit()
 
     # "Cutting" the result.
     last_message = response['result'][-1]['message']
@@ -63,6 +70,8 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, preset
 
     # backup :)
     old_schedule = dict(schedule)
+    for i in schedule:
+        old_schedule[i] = dict(schedule[i])
 
     chat_id = reply_chat_id
 
@@ -73,26 +82,45 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, preset
 
     interrupt = check_for_target_phrase(text, presets_phrases)
     if interrupt is not None:
-        params = {'chat_id': chat_id, 'text': interrupt, 'schedule': schedule, 'reply_to_message_id': reply_to}
-        return params
+        if 'setting' in interrupt:
+            command = interrupt['setting'][0]
+            if command == '/setinterval':
+
+                try:
+                    schedule[reply_chat_id]['interval'] = int(interrupt['setting'][1][0])
+                    params = {'chat_id': None, 'schedule': schedule}
+                    return params
+                except (ValueError, IndexError, TypeError):
+                    params = {'chat_id': None, 'schedule': old_schedule}
+                    return params
+        else:
+            params = {'chat_id': chat_id, 'text': interrupt, 'schedule': old_schedule, 'reply_to_message_id': reply_to}
+            return params
 
     # Should we post a message and void the counter for this chat_id
     # or we just need to increment a counter for this chat. Or add a new counter for the new chat.
-
     if reply_chat_id in schedule:
-        if schedule[reply_chat_id] >= interval:
-            schedule[reply_chat_id] = 1
-        else:
-            schedule[reply_chat_id] += 1
-            params = {'chat_id': None, 'schedule': schedule}
-            print schedule
-            return params
-    else:
-        schedule[reply_chat_id] = 1
-        params = {'chat_id': None, 'schedule': schedule}
-        print schedule
-        return params
+        try:
+            if 'interval' in schedule[reply_chat_id]:
+                pass
+        except:
+            schedule[reply_chat_id]['interval'] = interval
 
+        if 'count' in schedule[reply_chat_id]:
+            if schedule[reply_chat_id]['count'] >= schedule[reply_chat_id]['interval']:
+                schedule[reply_chat_id]['count'] = 1
+
+            else:
+                schedule[reply_chat_id]['count'] += 1
+                params = {'chat_id': None, 'schedule': schedule}
+                return params
+        else:
+            schedule[reply_chat_id]['count'] = 1
+
+    else:
+        schedule[reply_chat_id] = {'count': 1, 'interval': interval}
+        params = {'chat_id': None, 'schedule': schedule}
+        return params
     final = do_magic(text, phrase_tmpl, stop_list)
 
     # if we did not got prepared text for sending, we should fallback to old schedule
@@ -104,9 +132,40 @@ def get_send_params(response, schedule, interval, phrase_tmpl, stop_list, preset
         params = {'chat_id': None, 'schedule': old_schedule}
     else:
         params = {'chat_id': chat_id, 'text': final, 'schedule': schedule, 'reply_to_message_id': reply_to}
-    print params['schedule']
     return params
 
+def save_schedule_to_file(schedule, filename):
+    '''
+    Saves our schedule to file
+    :param params: json data for saving to file.
+    :return: Nothing or None
+    '''
+    try:
+        fd = open(filename, 'w')
+        fd.write(str(schedule))
+        print('Writed to file: {s}'.format(s=schedule))
+    except IOError:
+        print(u'Error while saving schedule to file.')
+        return None
+    finally:
+        fd.close()
+
+def read_schedule_from_file(filename):
+    '''
+    read params from file for fist run.
+    :param filename: filename we should try to read
+    :return: None or dict with schedule
+    '''
+    schedule = {}
+    try:
+        fd = open(filename, 'r')
+        schedule = eval(fd.readline())
+        print("Data restored from file: {sched}".format(sched=schedule))
+    except IOError:
+        print(u'Error while reading schedule from file.')
+    finally:
+        fd.close()
+        return schedule
 
 def get_new_offset(response):
     """
@@ -120,6 +179,8 @@ def get_new_offset(response):
     except (KeyError, IndexError):
         print u'Some problems with getting new offset. Is the response full?'
         pass
+    except KeyboardInterrupt:
+        exit()
 
 
 def check_for_target_phrase(text, presets_phrases):
@@ -129,13 +190,20 @@ def check_for_target_phrase(text, presets_phrases):
     Answer will be select by random.
     :param text: text(list of words, yep..) from chat.
     :param presets_phrases: presets from settings.
-    :return: None or random phrase from presets.
+    :return: None, random phrase from presets or settings
     """
     # we should join the list into the string and remove all punctuation marks.
     text = u' '.join(text)
     del_chars = u'.,?!:;)(\\«»#"\''
     del_map = dict((ord(char), None) for char in del_chars)
     text = text.translate(del_map)
+    rex = '^/'
+    rex_compiled = re.compile(rex)
+
+    if rex_compiled.match(text):
+        text = text.split(' ')
+        settings = {'setting': [text[0], text[1:]]}
+        return settings
 
     for target_phrase in presets_phrases:
         if target_phrase.lower() in text:
@@ -157,7 +225,6 @@ def do_magic(text, phrase_tmpl, stop_list):
     vocabulary = []
 
     phrase = phrase_tmpl[randrange(0, len(phrase_tmpl), 1)]
-
     for word in text:
         if len(word) < 3:
             continue
@@ -176,9 +243,11 @@ def do_magic(text, phrase_tmpl, stop_list):
         word = vocabulary[index]
     except ValueError:
         return None
+    except KeyboardInterrupt:
+        exit()
+
     end_phrase = phrase.format(word=word)
     return end_phrase
-
 
 def send_message(params):
     """
@@ -192,6 +261,8 @@ def send_message(params):
         requests.post(url, data=params)
     except Exception as exc:
         print 'Cannot send the message. Check it. sendMessage func.{exc}'.format(exc=str(exc))
+    except KeyboardInterrupt:
+        exit()
 
 
 def initial_run():
@@ -222,7 +293,7 @@ def initial_run():
 
 def main():
     # init variables we need for correct working.
-    schedule = {}
+    schedule = read_schedule_from_file(filename)
     offset = initial_run()
 
     while True:
@@ -239,6 +310,7 @@ def main():
         params = get_send_params(response, schedule, wait_posts, phrases, bad_words, presets)
 
         schedule = params.pop('schedule')
+        save_schedule_to_file(schedule, filename)
 
         if params['chat_id'] is None:
             continue
